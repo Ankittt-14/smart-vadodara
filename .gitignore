@@ -1,0 +1,15 @@
+node_modules/
+dist/
+*.db
+*.db-wal
+*.db-shm
+server/uploads/issues/*
+server/uploads/proofs/*
+!server/uploads/issues/.gitkeep
+!server/uploads/proofs/.gitkeep
+uploads/issues/*
+uploads/proofs/*
+!uploads/issues/.gitkeep
+!uploads/proofs/.gitkeep
+.DS_Store
+*.log
