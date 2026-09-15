@@ -33,15 +33,14 @@ function classifyIssue(description = '', filename = '') {
     }
   }
 
+  const hash = [...text].reduce((a, c) => a + c.charCodeAt(0), 0);
+
   if (!best) {
-    // deterministic pseudo-random fallback based on a simple hash,
-    // so the same filename+description always yields the same category (stable demo)
     const categories = Object.keys(CATEGORY_KEYWORDS);
-    const hash = [...text].reduce((a, c) => a + c.charCodeAt(0), 0);
     best = categories[hash % categories.length];
   }
 
-  const confidence = Math.min(0.99, 0.62 + bestScore * 0.12 + Math.random() * 0.08);
+  const confidence = Math.min(0.99, 0.62 + bestScore * 0.12 + (hash % 8) * 0.01);
   return { category: best, confidence: Number(confidence.toFixed(2)) };
 }
 
@@ -85,7 +84,7 @@ function checkDuplicateOrSpam(db, category, lat, lng, description) {
     }
   }
 
-  const isSpam = !!description && description.trim().length > 0 && description.trim().length < 3;
+  const isSpam = !!description && description.trim().length > 0 && description.trim().length < 2;
   return { isDuplicate: false, duplicateOf: null, isSpam };
 }
 

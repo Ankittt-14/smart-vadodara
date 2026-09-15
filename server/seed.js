@@ -38,7 +38,6 @@ if (wardCount === 0) {
 
 // Seed Users — Ensure ankit@gmail.com is seeded
 const ankitPassHash = bcrypt.hashSync('12345', 10);
-const citizenPassHash = bcrypt.hashSync('12345', 10);
 
 const upsertUser = db.prepare(`
   INSERT INTO users (email, password, name, role, ward_id)
@@ -47,7 +46,6 @@ const upsertUser = db.prepare(`
 `);
 
 upsertUser.run('ankit@gmail.com', ankitPassHash, 'Er. Ankit Sharma', 'ward_officer', 1);
-upsertUser.run('citizen@vadodara.in', citizenPassHash, 'Citizen User', 'citizen', null);
 upsertUser.run('admin@vmc.gov.in', ankitPassHash, 'Comm. H. R. Solanki', 'admin', null);
 
-console.log('Seeded / updated officer ankit@gmail.com (pass: 12345) and demo accounts.');
+console.log('Seeded officer ankit@gmail.com (pass: 12345) and admin accounts.');

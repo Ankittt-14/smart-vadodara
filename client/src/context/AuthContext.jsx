@@ -1,124 +1,157 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useRef } from 'react';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  signOut,
+  updateProfile,
+  sendEmailVerification,
+  onAuthStateChanged,
+} from 'firebase/auth';
+import { auth, googleProvider } from '../firebase';
 import { api } from '../api';
 
 const AuthContext = createContext();
 
-export const DEFAULT_CITIZEN = {
-  role: 'citizen',
-  name: 'Citizen User',
-  wardId: null,
-  title: 'Citizen',
-};
-
 export function AuthProvider({ children }) {
+  const [user, setUser] = useState(null);
   const [token, setToken] = useState(() => localStorage.getItem('smart_vadodara_token') || null);
-  const [user, setUser] = useState(() => {
-    try {
-      const saved = localStorage.getItem('smart_vadodara_user');
-      return saved ? JSON.parse(saved) : null;
-    } catch {
-      return null;
-    }
-  });
+  const [loading, setLoading] = useState(true);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState(null);
+  const pendingCreds = useRef(null);
 
   useEffect(() => {
-    if (token) {
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      localStorage.setItem('smart_vadodara_token', token);
-    } else {
-      delete api.defaults.headers.common['Authorization'];
-      localStorage.removeItem('smart_vadodara_token');
-    }
-  }, [token]);
-
-  useEffect(() => {
-    try {
-      if (user) {
-        localStorage.setItem('smart_vadodara_user', JSON.stringify(user));
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        if (!firebaseUser.emailVerified) {
+          setEmailVerified(false);
+          setPendingVerificationEmail(firebaseUser.email);
+          await signOut(auth);
+          setUser(null);
+          setToken(null);
+          localStorage.removeItem('smart_vadodara_user');
+          localStorage.removeItem('smart_vadodara_token');
+          delete api.defaults.headers.common['Authorization'];
+        } else {
+          setEmailVerified(true);
+          setPendingVerificationEmail(null);
+          pendingCreds.current = null;
+          const idToken = await firebaseUser.getIdToken();
+          const userData = {
+            id: firebaseUser.uid,
+            email: firebaseUser.email,
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Citizen',
+            role: 'citizen',
+            wardId: null,
+            title: 'Citizen',
+            photoURL: firebaseUser.photoURL,
+          };
+          setUser(userData);
+          setToken(idToken);
+          localStorage.setItem('smart_vadodara_user', JSON.stringify(userData));
+          localStorage.setItem('smart_vadodara_token', idToken);
+          api.defaults.headers.common['Authorization'] = `Bearer ${idToken}`;
+        }
       } else {
+        setUser(null);
+        setToken(null);
         localStorage.removeItem('smart_vadodara_user');
+        localStorage.removeItem('smart_vadodara_token');
+        delete api.defaults.headers.common['Authorization'];
       }
-    } catch {}
-  }, [user]);
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
 
-  const loginWithCredentials = async (email, password) => {
-    try {
-      const res = await api.post('/api/auth/login', { email, password });
-      const { token: authToken, user: userData } = res.data;
-      setToken(authToken);
-      setUser(userData);
-      return userData;
-    } catch (err) {
-      if (email.toLowerCase().trim() === 'ankit@gmail.com' && password === '12345') {
-        const userData = {
-          id: 1,
-          email: 'ankit@gmail.com',
-          name: 'Er. Ankit Sharma',
-          role: 'ward_officer',
-          wardId: 1,
-          wardName: 'Sayajigunj',
-          title: 'Ward 1 Officer',
-        };
-        const fallbackToken = 'demo_officer_ankit_token_' + Date.now();
-        setToken(fallbackToken);
-        setUser(userData);
-        return userData;
-      }
+  const loginWithEmail = async (email, password) => {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    if (!cred.user.emailVerified) {
+      pendingCreds.current = { email, password };
+      setPendingVerificationEmail(cred.user.email);
+      await sendEmailVerification(cred.user);
+      await signOut(auth);
+      const err = new Error('Email not verified');
+      err.code = 'auth/email-not-verified';
       throw err;
     }
+    pendingCreds.current = null;
+    return cred.user;
   };
 
-  const loginCitizenOtp = async (mobileNumber, otp) => {
-    try {
-      const res = await api.post('/api/auth/citizen-otp', { mobileNumber, otp });
-      const { token: authToken, user: userData } = res.data;
-      setToken(authToken);
-      setUser(userData);
-      return userData;
-    } catch (err) {
-      // Fallback for seamless citizen authentication
-      const clean = (mobileNumber || '9876543210').replace(/\D/g, '').slice(-10);
-      const userData = {
-        id: parseInt(clean.slice(-6)) || 999,
-        email: `citizen_${clean}@vadodara.in`,
-        name: `Citizen (+91 ${clean})`,
-        role: 'citizen',
-        wardId: null,
-        title: 'Citizen',
-      };
-      const fallbackToken = 'demo_citizen_token_' + Date.now();
-      setToken(fallbackToken);
-      setUser(userData);
-      return userData;
-    }
+  const loginWithGoogle = async () => {
+    const cred = await signInWithPopup(auth, googleProvider);
+    return cred.user;
   };
 
   const registerCitizen = async (name, email, password) => {
-    const res = await api.post('/api/auth/register', { name, email, password, role: 'citizen' });
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await updateProfile(cred.user, { displayName: name });
+    pendingCreds.current = { email, password };
+    await sendEmailVerification(cred.user);
+    setPendingVerificationEmail(email);
+    await signOut(auth);
+    return cred.user;
+  };
+
+  const loginWithCredentials = async (email, password) => {
+    const res = await api.post('/api/auth/login', { email, password });
     const { token: authToken, user: userData } = res.data;
     setToken(authToken);
     setUser(userData);
+    localStorage.setItem('smart_vadodara_user', JSON.stringify(userData));
+    localStorage.setItem('smart_vadodara_token', authToken);
+    api.defaults.headers.common['Authorization'] = `Bearer ${authToken}`;
     return userData;
   };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
+  const resendVerificationEmail = async () => {
+    if (auth.currentUser) {
+      await sendEmailVerification(auth.currentUser);
+      return;
+    }
+    if (pendingCreds.current) {
+      const cred = await signInWithEmailAndPassword(auth, pendingCreds.current.email, pendingCreds.current.password);
+      await sendEmailVerification(cred.user);
+      await signOut(auth);
+    }
   };
 
-  const isOfficer = user && (user.role === 'ward_officer' || user.role === 'admin' || user.email === 'ankit@gmail.com');
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
+    pendingCreds.current = null;
+    setToken(null);
+    setUser(null);
+    setEmailVerified(false);
+    setPendingVerificationEmail(null);
+    localStorage.removeItem('smart_vadodara_user');
+    localStorage.removeItem('smart_vadodara_token');
+    delete api.defaults.headers.common['Authorization'];
+  };
+
+  const isOfficer = user && (user.role === 'ward_officer' || user.role === 'admin');
 
   return (
     <AuthContext.Provider
       value={{
         token,
         user,
-        isAuthenticated: !!token && !!user,
+        isAuthenticated: !!user,
+        loading,
+        emailVerified,
+        pendingVerificationEmail,
         isOfficer,
         isAdmin: user?.role === 'admin',
+        loginWithEmail,
+        loginWithGoogle,
         loginWithCredentials,
-        loginCitizenOtp,
         registerCitizen,
+        resendVerificationEmail,
         logout,
       }}
     >

@@ -98,32 +98,6 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
-app.post('/api/auth/citizen-otp', (req, res) => {
-  try {
-    const { mobileNumber } = req.body;
-    if (!mobileNumber || mobileNumber.replace(/\D/g, '').length < 10) {
-      return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
-    }
-
-    const cleanMobile = mobileNumber.replace(/\D/g, '').slice(-10);
-    const email = `citizen_${cleanMobile}@vadodara.in`;
-    const name = `Citizen (+91 ${cleanMobile})`;
-    const user = {
-      id: parseInt(cleanMobile.slice(-6)) || 999,
-      email,
-      name,
-      role: 'citizen',
-      wardId: null,
-      title: 'Citizen',
-    };
-    const token = jwt.sign(user, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Mobile login failed' });
-  }
-});
-
 app.get('/api/auth/me', authenticateToken, (req, res) => {
   const row = db.prepare('SELECT id, email, name, role, ward_id FROM users WHERE id = ?').get(req.user.id);
   if (!row) return res.status(404).json({ error: 'User not found' });

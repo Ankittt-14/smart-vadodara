@@ -39,7 +39,7 @@ export default function WardDashboard() {
     api.get(`/api/issues${query}`).then((res) => {
       setIssues(res.data);
       setSelectedId((prev) => (res.data.some((i) => i.id === prev) ? prev : res.data[0]?.id));
-    });
+    }).catch(() => {});
   };
 
   useEffect(() => {
@@ -275,12 +275,15 @@ export default function WardDashboard() {
                         </div>
                       )}
                       <button
-                        disabled={resolving}
+                        disabled={resolving || !checklist.every(Boolean)}
                         onClick={() => {
-                          setChecklist([true, true, true]);
                           markResolved();
                         }}
-                        className="mt-6 w-full py-4 bg-[#004085] hover:bg-[#003366] text-white font-semibold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-60 cursor-pointer"
+                        className={`mt-6 w-full py-4 font-semibold text-lg rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                          checklist.every(Boolean)
+                            ? 'bg-[#004085] hover:bg-[#003366] text-white'
+                            : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        } disabled:opacity-60`}
                       >
                         <span className="material-symbols-outlined text-2xl">verified</span>
                         <span>{resolving ? 'AI Validating Fix...' : 'Verify & Mark Issue Resolved'}</span>

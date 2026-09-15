@@ -10,7 +10,20 @@ import Register from './pages/Register';
 import { useAuth } from './context/AuthContext';
 
 function AppRoutes() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading, isOfficer } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen bg-[#f4f7fa] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-[#004085] text-white flex items-center justify-center animate-pulse">
+            <span className="material-symbols-outlined text-[28px]">location_city</span>
+          </div>
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (
@@ -29,7 +42,7 @@ function AppRoutes() {
         <Route path="/report" element={<ReportIssue />} />
         <Route path="/processing" element={<AIProcessingResult />} />
         <Route path="/processing/:id" element={<AIProcessingResult />} />
-        <Route path="/ward-dashboard" element={<WardDashboard />} />
+        <Route path="/ward-dashboard" element={isOfficer ? <WardDashboard /> : <Navigate to="/" replace />} />
         <Route path="/outcome" element={<PublicOutcome />} />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
