@@ -6,6 +6,14 @@ Smart Vadodara is an end-to-end full-stack civic monitoring platform that levera
 
 The platform bridges the gap between **citizens**, **Ward Engineers**, and **Municipal Administrators** through real-time GIS mapping, automated proof-of-work verification, and interactive public outcome dashboards.
 
+## 🌐 Live Links
+
+- Frontend: https://smart-vadodara-blond.vercel.app
+- Backend API: https://smart-vadodara-api.onrender.com
+- GitHub Repository: https://github.com/Ankittt-14/smart-vadodara
+
+Use the frontend URL to access the full app. Use the backend URL for API integration, testing, and deployment configuration.
+
 ---
 
 ## 🌟 Key Features & Modules
@@ -157,6 +165,61 @@ The SQLite database (`server/vadodara.db`) consists of four primary relational t
 
 ### Analytics & Metrics
 - `GET /api/stats` — Ward health index, total active/resolved counts, confidence averages, high-risk alerts, map marker datasets.
+
+---
+
+## 🚀 Deployment Setup (Render + Vercel + Firebase)
+
+### GitHub push
+```bash
+git add .
+git commit -m "Deploy-ready project updates"
+git push origin main
+```
+
+### Backend deploy on Render
+- Repository root: `server`
+- Build command: `npm install`
+- Start command: `node server.js`
+- Required environment variable:
+  ```text
+  JWT_SECRET=your-strong-random-secret
+  ```
+- Live backend URL:
+  ```text
+  https://smart-vadodara-api.onrender.com
+  ```
+
+### Frontend deploy on Vercel
+- Root directory: `client`
+- Framework preset: `Vite`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Required environment variable:
+  ```text
+  VITE_API_URL=https://smart-vadodara-api.onrender.com
+  ```
+- Add SPA routing config in `client/vercel.json`:
+  ```json
+  {
+    "rewrites": [
+      { "source": "/(.*)", "destination": "/index.html" }
+    ]
+  }
+  ```
+- Live frontend URL example:
+  ```text
+  https://smart-vadodara-blond.vercel.app
+  ```
+
+### Firebase authorized domains
+Add these in Firebase Console → Authentication → Settings → Authorized domains:
+```text
+localhost
+smart-vadodara.firebasapp.com
+smart-vadodara.web.app
+smart-vadodara-blond.vercel.app
+```
 
 ---
 
