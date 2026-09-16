@@ -7,6 +7,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { nanoid } = require('nanoid');
 const db = require('./db');
+require('./seed');
 const {
   classifyIssue,
   nearestWard,
